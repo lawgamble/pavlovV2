@@ -15,6 +15,7 @@ import (
 var dbHandler mariadb.DBHandler
 
 func main() {
+	// make sure to change file name below to "./variables.env"
 	_ = godotenv.Load("./vars.env")
 
 	bot, err := discordgo.New(os.Getenv("BOT_TOKEN"))
