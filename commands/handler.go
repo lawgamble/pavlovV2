@@ -1,8 +1,10 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/bwmarrin/discordgo"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"pfc2/components"
@@ -35,7 +37,10 @@ func HandleCommands(s *discordgo.Session, i *discordgo.InteractionCreate, db mar
 						}
 						interactions.RegistrationSuccessResponse(s, i)
 						// give user PlayerType Role - Enlisted/Draft - PickupsOnly
-						//write to the Alias File - check if user exists first - update name on file
+						err = writeToAliasFile(i.Member.User.ID, submitData.InGameName)
+						if err != nil {
+							log.Print(err)
+						}
 						break
 					}
 				}
@@ -55,7 +60,12 @@ func HandleCommands(s *discordgo.Session, i *discordgo.InteractionCreate, db mar
 							break
 						}
 						interactions.UpdatedRegistrationSuccessResponse(s, i)
-						//write to the Alias File - check if user exists first - update name on file
+
+						err = writeToAliasFile(i.Member.User.ID, submitData.InGameName)
+						if err != nil {
+							log.Print(err)
+						}
+
 						break
 					}
 				}
@@ -141,4 +151,52 @@ func statusResponse() string {
 	rand.Seed(time.Now().UnixNano())
 	randomIndex := rand.Intn(len(statusOptions))
 	return statusOptions[randomIndex]
+}
+
+func writeToAliasFile(discordId string, inGameName string) error {
+	filePath := "./aliases.json"
+	// Read the JSON data from the file
+	inGameName = "q-" + inGameName
+	jsonFile, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+
+	// Unmarshal the JSON data into a map
+	var data map[string]interface{}
+	if err := json.Unmarshal(jsonFile, &data); err != nil {
+		return err
+	}
+
+	// Check if the "players" object exists
+	players, ok := data["players"].(map[string]interface{})
+	if !ok {
+		players = make(map[string]interface{})
+		data["players"] = players
+	}
+
+	// Check if the discordId already exists in "players"
+	existingName, exists := players[discordId].(string)
+	if exists {
+		// If inGameName is different, update it
+		if existingName != inGameName {
+			players[discordId] = inGameName
+		}
+	} else {
+		// Add the new player
+		players[discordId] = inGameName
+	}
+
+	// Marshal the updated data back to JSON with indentation
+	updatedJSON, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	// Write the updated JSON back to the file
+	if err := ioutil.WriteFile(filePath, updatedJSON, 0644); err != nil {
+		return err
+	}
+
+	return nil
 }
