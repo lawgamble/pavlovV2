@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"math/rand"
+	"os"
 	"pfc2/components"
 	"pfc2/interactions"
 	mariadb "pfc2/mariaDB"
@@ -154,7 +155,7 @@ func statusResponse() string {
 }
 
 func writeToAliasFile(discordId string, inGameName string) error {
-	filePath := "./aliases.json"
+	filePath := os.Getenv("ALIASES_FILEPATH")
 	// Read the JSON data from the file
 	inGameName = "q-" + inGameName
 	jsonFile, err := ioutil.ReadFile(filePath)
