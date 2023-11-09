@@ -116,7 +116,7 @@ func (m *ModalSubmitData) ValidatePlayerType() error {
 func (m *ModalSubmitData) ValidateDateOfBirth() error {
 	dob, err := time.Parse("01022006", m.DOB)
 	if err != nil {
-		errFormat := fmt.Errorf("for DOB, you must use the format: MMDDYYYY: %v", err)
+		errFormat := fmt.Errorf("for DOB, you must use the format: MMDDYYYY")
 		return errFormat
 	}
 	currentDate := time.Now()
