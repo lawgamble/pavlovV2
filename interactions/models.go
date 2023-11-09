@@ -107,7 +107,7 @@ var FilledDOBActionRow = discordgo.ActionsRow{
 			CustomID:    "dateOfBirth",
 			Label:       "Date Of Birth",
 			Style:       discordgo.TextInputShort,
-			Placeholder: "Ex: MMDDYYYY; 01229999",
+			Placeholder: "Ex: MMDDYYYY; 09291988",
 			Required:    true,
 			MaxLength:   8,
 		},

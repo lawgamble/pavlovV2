@@ -54,16 +54,9 @@ var RegisterEnableButton = discordgo.Button{
 	CustomID: "register",
 }
 
-var RegistrationHelpButton = discordgo.Button{
-	Label:    "Help",
-	Style:    discordgo.SecondaryButton,
-	CustomID: "registerHelp",
-}
-
 //RegistrationButtons contains the buttons needed for the registration page.
 var RegistrationButtons = discordgo.ActionsRow{
 	Components: []discordgo.MessageComponent{
 		RegisterEnableButton,
-		RegistrationHelpButton,
 	},
 }
