@@ -17,7 +17,7 @@ func OpenRegistrationModal(s *discordgo.Session, i *discordgo.InteractionCreate)
 			Components: []discordgo.MessageComponent{
 				RegionActionRow,
 				PlayStyleActionRow,
-				ActivityActionRow,
+				PlayerTypeActionRow,
 				DOBActionRow,
 				InGameNameActionRow,
 			},
@@ -30,13 +30,13 @@ func OpenRegistrationModal(s *discordgo.Session, i *discordgo.InteractionCreate)
 
 // OpenFilledRegistrationModal sends a pop-up modal window, allowing a user to update text fields. This modal is only viewable if the current user is registered.
 func OpenFilledRegistrationModal(s *discordgo.Session, i *discordgo.InteractionCreate, p mariadb.Player) {
-	region := FilledRegionActionRow
+	region := RegionActionRow
 	region.Components[0].(*discordgo.TextInput).Value = p.Region
-	playStyle := FilledPlayStyleActionRow
+	playStyle := PlayStyleActionRow
 	playStyle.Components[0].(*discordgo.TextInput).Value = p.PlayStyle
-	playerType := FilledActivityActionRow
+	playerType := PlayerTypeActionRow
 	playerType.Components[0].(*discordgo.TextInput).Value = p.PlayerType
-	inGameName := FilledInGameNameActionRow
+	inGameName := InGameNameActionRow
 	inGameName.Components[0].(*discordgo.TextInput).Value = p.InGameName
 
 	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -59,7 +59,7 @@ func OpenFilledRegistrationModal(s *discordgo.Session, i *discordgo.InteractionC
 }
 
 func getDob(p mariadb.Player) discordgo.MessageComponent {
-	dob := FilledDOBActionRow
+	dob := DOBActionRow
 	d := p.DOB
 	stringDob := string(d)
 	dateComponents := strings.Split(stringDob, "-")

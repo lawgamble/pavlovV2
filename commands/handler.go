@@ -37,16 +37,13 @@ func HandleCommands(s *discordgo.Session, i *discordgo.InteractionCreate, db mar
 							break
 						}
 						interactions.RegistrationSuccessResponse(s, i)
-						err = s.GuildMemberRoleAdd(i.GuildID, i.Member.User.ID, os.Getenv("REGISTERED_ROLE_ID"))
-						if err != nil {
-							log.Print(err)
+
+						interactions.GiveRoleToUser(s, i, os.Getenv("REGISTERED_ROLE_ID"))
+
+						if submitData.PlayerType == "Draftable" {
+							interactions.GiveRoleToUser(s, i, os.Getenv("ENLISTED_ROLE_ID"))
 						}
-						if submitData.PlayerType == "Enlisted/Draft" {
-							err = s.GuildMemberRoleAdd(i.GuildID, i.Member.User.ID, os.Getenv("ENLISTED_ROLE_ID"))
-							if err != nil {
-								log.Print(err)
-							}
-						}
+
 						err = writeToAliasFile(i.Member.User.ID, submitData.InGameName)
 						if err != nil {
 							log.Print(err)
@@ -70,22 +67,16 @@ func HandleCommands(s *discordgo.Session, i *discordgo.InteractionCreate, db mar
 							break
 						}
 						interactions.UpdatedRegistrationSuccessResponse(s, i)
-						if submitData.PlayerType == "Enlisted/Draft" {
-							err = s.GuildMemberRoleAdd(i.GuildID, i.Member.User.ID, os.Getenv("ENLISTED_ROLE_ID"))
-							if err != nil {
-								log.Print(err)
-							}
+
+						if submitData.PlayerType == "Draftable" {
+							interactions.GiveRoleToUser(s, i, os.Getenv("ENLISTED_ROLE_ID"))
 						} else {
-							err = s.GuildMemberRoleRemove(i.GuildID, i.Member.User.ID, os.Getenv("ENLISTED_ROLE_ID"))
-							if err != nil {
-								log.Print(err)
-							}
+							interactions.RemoveRoleFromUser(s, i, os.Getenv("ENLISTED_ROLE_ID"))
 						}
 						err = writeToAliasFile(i.Member.User.ID, submitData.InGameName)
 						if err != nil {
 							log.Print(err)
 						}
-
 						break
 					}
 				}

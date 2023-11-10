@@ -93,17 +93,17 @@ func (m *ModalSubmitData) ValidatePlayerType() error {
 	switch m.PlayerType {
 	case "1":
 		{
-			m.PlayerType = "Enlisted/Draft"
+			m.PlayerType = "Draftable"
 			break
 		}
 	case "2":
 		{
-			m.PlayerType = "Pickups Only"
+			m.PlayerType = "Team Member"
 			break
 		}
 	case "3":
 		{
-			m.PlayerType = "Inactive"
+			m.PlayerType = "Pickups Only"
 			break
 		}
 	default:

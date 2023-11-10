@@ -49,11 +49,18 @@ func Register(s *discordgo.Session, i *discordgo.InteractionCreate, db mariadb.D
 func SetFieldValuesToIntegers(p mariadb.Player) mariadb.Player {
 	if p.PlayerType != "" {
 		switch p.PlayerType {
-		case "Enlisted/Draft":
+		case "Draftable":
 			p.PlayerType = "1"
 			break
-		case "Pickups Only":
+		case "Team Member":
 			p.PlayerType = "2"
+			break
+		case "Pickups Only":
+			p.PlayerType = "3"
+			break
+		//Temporary until all players change plyerType format to above
+		case "Enlisted/Draft":
+			p.PlayerType = "1"
 			break
 		case "Inactive":
 			p.PlayerType = "3"
