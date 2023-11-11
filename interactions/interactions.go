@@ -7,8 +7,8 @@ import (
 	"time"
 )
 
-// HandleInteractions handles button presses outside a modal.
-func HandleInteractions(s *discordgo.Session, i *discordgo.InteractionCreate, db mariadb.DBHandler) {
+// HandleMessageComponent handles button presses outside a modal.
+func HandleMessageComponent(s *discordgo.Session, i *discordgo.InteractionCreate, db mariadb.DBHandler) {
 	customId := i.MessageComponentData().CustomID
 	switch customId {
 	case "register":
@@ -41,6 +41,7 @@ func Register(s *discordgo.Session, i *discordgo.InteractionCreate, db mariadb.D
 		OpenRegistrationModal(s, i)
 	} else {
 		//player is registered and wants to update their information.
+		// get all the data from the DB in order to fill the modal values with valid parameters
 		updatedPlayer := SetFieldValuesToIntegers(player)
 		OpenFilledRegistrationModal(s, i, updatedPlayer)
 	}
@@ -58,12 +59,8 @@ func SetFieldValuesToIntegers(p mariadb.Player) mariadb.Player {
 		case "Pickups Only":
 			p.PlayerType = "3"
 			break
-		//Temporary until all players change plyerType format to above
-		case "Enlisted/Draft":
-			p.PlayerType = "1"
-			break
-		case "Inactive":
-			p.PlayerType = "3"
+		default:
+			p.PlayerType = "X"
 			break
 		}
 	}
@@ -84,6 +81,9 @@ func SetFieldValuesToIntegers(p mariadb.Player) mariadb.Player {
 		case "IGL":
 			p.PlayStyle = "5"
 			break
+		default:
+			p.PlayStyle = "X"
+			break
 		}
 	}
 	if p.Region != "" {
@@ -99,6 +99,9 @@ func SetFieldValuesToIntegers(p mariadb.Player) mariadb.Player {
 			break
 		case "EU ONLY":
 			p.Region = "4"
+			break
+		default:
+			p.Region = "X"
 			break
 		}
 	}

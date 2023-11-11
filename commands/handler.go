@@ -14,95 +14,82 @@ import (
 	"time"
 )
 
-// HandleCommands handles all slash commands and InteractionModalSubmit interactions like button presses inside a modal.
-func HandleCommands(s *discordgo.Session, i *discordgo.InteractionCreate, db mariadb.DBHandler) {
-	switch i.Type {
-	case discordgo.InteractionModalSubmit:
+func HandleModalSubmit(s *discordgo.Session, i *discordgo.InteractionCreate, db mariadb.DBHandler) {
+	modalSubmitData := i.ModalSubmitData()
+	registerRoleId := os.Getenv("REGISTERED_ROLE_ID")
+	enlistedRoleId := os.Getenv("ENLISTED_ROLE_ID")
+	isValid, err, submitData := validateRegistrationData(modalSubmitData.Components)
+	if !isValid {
+		interactions.RegistrationErrorResponse(s, i, err)
+		return
+	}
 
-		modalSubmitData := i.ModalSubmitData()
+	switch modalSubmitData.CustomID {
+	case "createRegistration":
 		{
-			switch modalSubmitData.CustomID {
-			case "createRegistration":
-				{
-					isValid, err, submitData := validateRegistrationData(modalSubmitData.Components)
-					if !isValid {
-						interactions.RegistrationErrorResponse(s, i, err)
-						break
-					} else {
-						err := interactions.SubmitRegistration(i, db, submitData)
-						if err != nil {
-							//there was an error calling the DB
-							log.Print(err)
-							interactions.RegistrationErrorResponse(s, i, err)
-							break
-						}
-						interactions.RegistrationSuccessResponse(s, i)
-
-						interactions.GiveRoleToUser(s, i, os.Getenv("REGISTERED_ROLE_ID"))
-
-						if submitData.PlayerType == "Draftable" {
-							interactions.GiveRoleToUser(s, i, os.Getenv("ENLISTED_ROLE_ID"))
-						}
-
-						err = writeToAliasFile(i.Member.User.ID, submitData.InGameName)
-						if err != nil {
-							log.Print(err)
-						}
-						break
-					}
-				}
-			case "updateRegistration":
-				{
-					isValid, err, submitData := validateRegistrationData(modalSubmitData.Components)
-					if !isValid {
-						interactions.RegistrationErrorResponse(s, i, err)
-						break
-					} else {
-						submitData.DiscordId = i.Member.User.ID
-						err := interactions.SubmitUpdatedRegistration(db, submitData)
-						if err != nil {
-							//there was an error calling the DB
-							log.Print(err)
-							interactions.RegistrationErrorResponse(s, i, err)
-							break
-						}
-						interactions.UpdatedRegistrationSuccessResponse(s, i)
-
-						if submitData.PlayerType == "Draftable" {
-							interactions.GiveRoleToUser(s, i, os.Getenv("ENLISTED_ROLE_ID"))
-						} else {
-							interactions.RemoveRoleFromUser(s, i, os.Getenv("ENLISTED_ROLE_ID"))
-						}
-						err = writeToAliasFile(i.Member.User.ID, submitData.InGameName)
-						if err != nil {
-							log.Print(err)
-						}
-						break
-					}
-				}
-
+			err := interactions.SubmitRegistration(i, db, submitData)
+			if err != nil {
+				//there was an error calling the DB
+				log.Print(err)
+				interactions.RegistrationErrorResponse(s, i, err)
+				break
 			}
+			interactions.RegistrationSuccessResponse(s, i)
+			interactions.GiveRoleToUser(s, i, registerRoleId)
+
+			if submitData.PlayerType == "Draftable" {
+				interactions.GiveRoleToUser(s, i, enlistedRoleId)
+			}
+			err = writeToAliasFile(i.Member.User.ID, submitData.InGameName)
+			if err != nil {
+				log.Print(err)
+			}
+			break
 		}
-	case discordgo.InteractionApplicationCommand:
-		{
-			interaction := i.ApplicationCommandData()
-			switch interaction.Name {
-			case "status":
-				{
-					Status(s, i)
-					break
-				}
-			case "addbutton":
-				{
-					components.InitializeButtons(s, i, interaction.Options)
-					break
-				}
-			case "recoveraccount":
-				{
-					fmt.Println("You did it!")
-				}
-			}
 
+	case "updateRegistration":
+		{
+			submitData.DiscordId = i.Member.User.ID
+			err := interactions.SubmitUpdatedRegistration(db, submitData)
+			if err != nil {
+				//there was an error calling the DB
+				log.Print(err)
+				interactions.RegistrationErrorResponse(s, i, err)
+				break
+			}
+			interactions.UpdatedRegistrationSuccessResponse(s, i)
+
+			if submitData.PlayerType == "Draftable" {
+				interactions.GiveRoleToUser(s, i, enlistedRoleId)
+			} else {
+				interactions.RemoveRoleFromUser(s, i, enlistedRoleId)
+			}
+			err = writeToAliasFile(i.Member.User.ID, submitData.InGameName)
+			if err != nil {
+				log.Print(err)
+			}
+			break
+		}
+	}
+}
+
+// HandleApplicationCommands handles all slash commands
+func HandleApplicationCommands(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	interaction := i.ApplicationCommandData()
+	switch interaction.Name {
+	case "status":
+		{
+			Status(s, i)
+			break
+		}
+	case "addbutton":
+		{
+			components.InitializeButtons(s, i, interaction.Options)
+			break
+		}
+	case "recoveraccount":
+		{
+			fmt.Println("You did it!")
 		}
 	}
 }
@@ -120,7 +107,6 @@ func validateRegistrationData(c []discordgo.MessageComponent) (bool, error, mari
 	if err != nil {
 		return false, err, modalSubmitData
 	}
-
 	err = modalSubmitData.ValidatePlayerType()
 	if err != nil {
 		return false, err, modalSubmitData
@@ -135,7 +121,6 @@ func validateRegistrationData(c []discordgo.MessageComponent) (bool, error, mari
 	if err != nil {
 		return false, err, modalSubmitData
 	}
-
 	err = modalSubmitData.ValidateInGameName()
 	if err != nil {
 		return false, err, modalSubmitData
@@ -153,7 +138,7 @@ func Status(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	},
 	)
 	if err != nil {
-		//do nothing, I guess?
+		log.Print(err)
 	}
 }
 

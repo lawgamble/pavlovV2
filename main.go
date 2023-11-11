@@ -60,10 +60,21 @@ func readyHandler(s *discordgo.Session, event *discordgo.Ready) {
 }
 
 func commandHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	if i.Type == discordgo.InteractionMessageComponent {
-		interactions.HandleInteractions(s, i, dbHandler)
-	} else {
-		commands.HandleCommands(s, i, dbHandler)
+	switch i.Type {
+	case discordgo.InteractionMessageComponent:
+		{
+			interactions.HandleMessageComponent(s, i, dbHandler)
+			break
+		}
+	case discordgo.InteractionModalSubmit:
+		{
+			commands.HandleModalSubmit(s, i, dbHandler)
+			break
+		}
+	case discordgo.InteractionApplicationCommand:
+		{
+			commands.HandleApplicationCommands(s, i)
+			break
+		}
 	}
-
 }

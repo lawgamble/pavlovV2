@@ -48,7 +48,7 @@ func OpenFilledRegistrationModal(s *discordgo.Session, i *discordgo.InteractionC
 				region,
 				playStyle,
 				playerType,
-				getDob(p),
+				formatDOBForModal(p),
 				inGameName,
 			},
 		},
@@ -58,7 +58,7 @@ func OpenFilledRegistrationModal(s *discordgo.Session, i *discordgo.InteractionC
 	}
 }
 
-func getDob(p mariadb.Player) discordgo.MessageComponent {
+func formatDOBForModal(p mariadb.Player) discordgo.MessageComponent {
 	dob := DOBActionRow
 	d := p.DOB
 	stringDob := string(d)
