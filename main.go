@@ -18,7 +18,11 @@ func main() {
 	// make sure to change file name below to "./variables.env"
 	_ = godotenv.Load("./vars.env")
 
-	bot, err := discordgo.New(os.Getenv("BOT_TOKEN"))
+	botToken := os.Getenv("BOT_TOKEN")
+	botId := os.Getenv("BOT_ID")
+	guildId := os.Getenv("GUILD_ID")
+
+	bot, err := discordgo.New(botToken)
 	if err != nil {
 		log.Panic(err)
 		return
@@ -34,7 +38,7 @@ func main() {
 	}
 
 	//Register all slashCommands
-	_, err = bot.ApplicationCommandBulkOverwrite(os.Getenv("BOT_ID"), os.Getenv("GUILD_ID"), commands.SlashCommands)
+	_, err = bot.ApplicationCommandBulkOverwrite(botId, guildId, commands.SlashCommands)
 	if err != nil {
 		log.Panic(err)
 	}
