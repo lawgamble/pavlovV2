@@ -72,3 +72,17 @@ var InGameNameActionRow = discordgo.ActionsRow{
 		},
 	},
 }
+
+var NotPermittedInteractionResponse = &discordgo.InteractionResponse{
+	Type: 4,
+	Data: &discordgo.InteractionResponseData{
+		Content: "You don't have permission to do that!",
+	},
+}
+
+var RepeatCommandInteractionResponse = &discordgo.InteractionResponse{
+	Type: 4,
+	Data: &discordgo.InteractionResponseData{
+		Content: "Sent!",
+	},
+}

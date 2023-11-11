@@ -7,6 +7,7 @@ import (
 var SlashCommands = []*discordgo.ApplicationCommand{
 	&statusSlashCommand,
 	&addButtonsSlashCommand,
+	&repeatSlashCommand,
 	//&recoverSlashCommand,
 }
 
@@ -28,6 +29,27 @@ var recoverSlashCommand = discordgo.ApplicationCommand{
 			Required:    true,
 			MaxValue:    1,
 			MaxLength:   32,
+		},
+	},
+}
+
+var repeatSlashCommand = discordgo.ApplicationCommand{
+	Name:        "repeat",
+	Type:        1,
+	Description: "You know what to do",
+	Options: []*discordgo.ApplicationCommandOption{
+		{
+			Type:        discordgo.ApplicationCommandOptionChannel,
+			Name:        "channel",
+			Description: "Where to",
+			Required:    true,
+		},
+		{
+			Type:        discordgo.ApplicationCommandOptionString,
+			Name:        "message",
+			Description: "What to say",
+			Required:    true,
+			MaxLength:   2000,
 		},
 	},
 }

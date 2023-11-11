@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// HandleMessageComponent handles button presses outside a modal.
+// HandleMessageComponent handles button presses - will switch between customIds.
 func HandleMessageComponent(s *discordgo.Session, i *discordgo.InteractionCreate, db mariadb.DBHandler) {
 	customId := i.MessageComponentData().CustomID
 	switch customId {
@@ -41,7 +41,6 @@ func Register(s *discordgo.Session, i *discordgo.InteractionCreate, db mariadb.D
 		OpenRegistrationModal(s, i)
 	} else {
 		//player is registered and wants to update their information.
-		// get all the data from the DB in order to fill the modal values with valid parameters
 		updatedPlayer := SetFieldValuesToIntegers(player)
 		OpenFilledRegistrationModal(s, i, updatedPlayer)
 	}
