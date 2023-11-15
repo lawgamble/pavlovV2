@@ -8,6 +8,7 @@ var SlashCommands = []*discordgo.ApplicationCommand{
 	&statusSlashCommand,
 	&addButtonsSlashCommand,
 	&repeatSlashCommand,
+	&teamRegistrationSlashCommand,
 	//&recoverSlashCommand,
 }
 
@@ -72,6 +73,49 @@ var addButtonsSlashCommand = discordgo.ApplicationCommand{
 			},
 			MaxValue:  1,
 			MaxLength: 32,
+		},
+	},
+}
+
+var teamRegistrationSlashCommand = discordgo.ApplicationCommand{
+	Name:        "teamregister",
+	Type:        1,
+	Description: "register a team and the players on it; you are player1",
+	Options: []*discordgo.ApplicationCommandOption{
+		{
+			Type:        discordgo.ApplicationCommandOptionString,
+			Name:        "teamname",
+			Description: "your team's name:",
+			Required:    true,
+			MaxLength:   50,
+		},
+		{
+			Type:        discordgo.ApplicationCommandOptionString,
+			Name:        "player2",
+			Description: "2nd player",
+			Required:    false,
+			MaxLength:   35,
+		},
+		{
+			Type:        discordgo.ApplicationCommandOptionString,
+			Name:        "player3",
+			Description: "3rd player",
+			Required:    false,
+			MaxLength:   35,
+		},
+		{
+			Type:        discordgo.ApplicationCommandOptionString,
+			Name:        "player4",
+			Description: "4th player",
+			Required:    false,
+			MaxLength:   35,
+		},
+		{
+			Type:        discordgo.ApplicationCommandOptionString,
+			Name:        "player5",
+			Description: "5th player",
+			Required:    false,
+			MaxLength:   35,
 		},
 	},
 }

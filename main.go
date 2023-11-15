@@ -77,7 +77,7 @@ func commandHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		}
 	case discordgo.InteractionApplicationCommand:
 		{
-			commands.HandleApplicationCommands(s, i)
+			commands.HandleApplicationCommands(s, i, dbHandler)
 			break
 		}
 	}

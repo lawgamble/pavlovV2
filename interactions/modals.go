@@ -1,6 +1,7 @@
 package interactions
 
 import (
+	"fmt"
 	"github.com/bwmarrin/discordgo"
 	"log"
 	mariadb "pfc2/mariaDB"
@@ -108,6 +109,20 @@ func UpdatedRegistrationSuccessResponse(s *discordgo.Session, i *discordgo.Inter
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: "Success! Your info has been updated!",
+			Flags:   discordgo.MessageFlagsEphemeral,
+		},
+	})
+	if resErr != nil {
+		log.Print(resErr)
+		return
+	}
+}
+
+func TeamRegistrationSuccessResponse(s *discordgo.Session, i *discordgo.InteractionCreate, teamName string) {
+	resErr := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: fmt.Sprintf("%v has been registered! Mods will need to approve your team.", teamName),
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})

@@ -151,3 +151,10 @@ func (m *ModalSubmitData) ValidateInGameName() error {
 	}
 	return nil
 }
+
+func (p Player) IsNotEmpty() bool {
+	if p.DiscordId != 0 {
+		return true
+	}
+	return false
+}

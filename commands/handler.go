@@ -70,9 +70,13 @@ func HandleModalSubmit(s *discordgo.Session, i *discordgo.InteractionCreate, db 
 }
 
 // HandleApplicationCommands handles all slash commands
-func HandleApplicationCommands(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func HandleApplicationCommands(s *discordgo.Session, i *discordgo.InteractionCreate, db mariadb.DBHandler) {
 	interaction := i.ApplicationCommandData()
 	switch interaction.Name {
+	case "teamregister":
+		{
+			interactions.RegisterTeam(s, i, interaction, db)
+		}
 	case "status":
 		{
 			Status(s, i)

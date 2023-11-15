@@ -2,8 +2,12 @@ package interactions
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/bwmarrin/discordgo"
+	"log"
 	mariadb "pfc2/mariaDB"
+	"strings"
+	"sync"
 	"time"
 )
 
@@ -105,4 +109,89 @@ func SetFieldValuesToIntegers(p mariadb.Player) mariadb.Player {
 		}
 	}
 	return p
+}
+
+func RegisterTeam(s *discordgo.Session, i *discordgo.InteractionCreate, interaction discordgo.ApplicationCommandInteractionData, db mariadb.DBHandler) {
+	//collect all necessary data
+	var playerIds []string
+
+	teamName := interaction.Options[0].Value.(string)
+	player1 := i.Member.User.ID
+
+	playerIds = append(playerIds, player1)
+
+	for i := 1; i < len(interaction.Options); i++ {
+		playerId := interaction.Options[i].Value.(string)
+		playerId = strings.ReplaceAll(playerId, "<@", "")
+		playerId = strings.ReplaceAll(playerId, ">", "")
+		playerIds = append(playerIds, playerId)
+	}
+	isValid, players, err := ValidateAllTeamMembers(playerIds, db, player1)
+	if isValid {
+		err := sendTeamRegistration(players, teamName, db)
+		if err != nil {
+			log.Print(err)
+			RegistrationErrorResponse(s, i, err)
+		}
+	} else {
+		RegistrationErrorResponse(s, i, fmt.Errorf("%v", err))
+		return
+	}
+	TeamRegistrationSuccessResponse(s, i, teamName)
+}
+
+func ValidateAllTeamMembers(ids []string, db mariadb.DBHandler, player1 string) (bool, []mariadb.Player, error) {
+	var players []mariadb.Player
+	var wg sync.WaitGroup
+	var mu sync.Mutex // protect the concurrent write to players slice
+	var errChan = make(chan error, len(ids))
+	done := make(chan struct{})
+
+	for _, id := range ids {
+		wg.Add(1)
+
+		go func(id string) {
+			defer wg.Done() // Ensure that Done is called even if the condition below is true
+
+			if id == player1 {
+				err := fmt.Errorf("no need to register yourself")
+				errChan <- err
+				return
+			}
+
+			select {
+			case <-done:
+				// If done channel is closed, exit goroutine
+				return
+			default:
+				player, err := db.DB.ReadByDiscordId(id)
+				if err != nil {
+					// Sends error to the errChan
+					errChan <- err
+					return
+				}
+
+				if player.IsNotEmpty() {
+					mu.Lock()
+					players = append(players, player)
+					mu.Unlock()
+				}
+			}
+		}(id)
+	}
+
+	wg.Wait()
+	close(done)
+
+	select {
+	case err := <-errChan:
+		log.Println("Error:", err)
+		return false, players, err
+	default:
+		return true, players, nil
+	}
+}
+
+func sendTeamRegistration(players []mariadb.Player, name string, db mariadb.DBHandler) error {
+	return nil
 }
