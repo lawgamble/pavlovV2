@@ -11,7 +11,10 @@ import (
 
 type DBI interface {
 	CreatePlayer(m ModalSubmitData, time time.Time) error
-	ReadByDiscordId(discordId string) (Player, error)
+	CreateTempRoster(discordId, teamName string) error
+	ReadTeamByTeamName(teamName string) (Team, error)
+	CreateTempTeam(teamName string) error
+	ReadUsersByDiscordId(discordId string) (Player, error)
 	Update(m ModalSubmitData) error
 	Delete()
 }
@@ -68,8 +71,8 @@ func (db MariaDB) CreatePlayer(m ModalSubmitData, time time.Time) error {
 	return err
 }
 
-//ReadByDiscordId calls mariaDb with the user's DiscordId as the Primary Key
-func (db MariaDB) ReadByDiscordId(discordId string) (Player, error) {
+//ReadUsersByDiscordId calls mariaDb with the user's DiscordId as the Primary Key
+func (db MariaDB) ReadUsersByDiscordId(discordId string) (Player, error) {
 	query := fmt.Sprintf("SELECT * FROM SND_USERS WHERE DiscordId = %v", discordId)
 	row := db.DB.QueryRow(query)
 
@@ -126,3 +129,30 @@ func (db MariaDB) Update(m ModalSubmitData) error {
 }
 
 func (db MariaDB) Delete() {}
+
+func (db MariaDB) CreateTempRoster(discordId, teamName string) error {
+	query := "INSERT INTO SND_TEMP_ROSTERS (DiscordId, Team) VALUES (?, ?)"
+	_, err := db.DB.Query(query, discordId, teamName)
+	return err
+}
+
+func (db MariaDB) CreateTempTeam(teamName string) error {
+	query := "INSERT INTO SND_TEAMS (TeamName, TeamStatus) VALUES (?, ?)"
+	_, err := db.DB.Query(query, teamName, "Pending")
+	return err
+}
+
+func (db MariaDB) ReadTeamByTeamName(teamName string) (Team, error) {
+	var team Team
+
+	query := "SELECT * FROM SND_TEAMS WHERE LOWER(TeamName) = LOWER(?) LIMIT 1"
+	row := db.DB.QueryRow(query, teamName)
+
+	err := row.Scan(
+		&team.TeamId,
+		&team.TeamName,
+		&team.TeamStatus,
+	)
+
+	return team, err
+}

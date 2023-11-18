@@ -6,6 +6,8 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"log"
 	mariadb "pfc2/mariaDB"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -38,7 +40,7 @@ func SubmitUpdatedRegistration(db mariadb.DBHandler, m mariadb.ModalSubmitData) 
 func Register(s *discordgo.Session, i *discordgo.InteractionCreate, db mariadb.DBHandler) {
 	//first, check DB if user is registered
 	discordId := i.Member.User.ID
-	player, err := db.DB.ReadByDiscordId(discordId)
+	player, err := db.DB.ReadUsersByDiscordId(discordId)
 
 	if err == sql.ErrNoRows {
 		// player is not registered and needs to
@@ -112,36 +114,84 @@ func SetFieldValuesToIntegers(p mariadb.Player) mariadb.Player {
 }
 
 func RegisterTeam(s *discordgo.Session, i *discordgo.InteractionCreate, interaction discordgo.ApplicationCommandInteractionData, db mariadb.DBHandler) {
-	//collect all necessary data
 	var playerIds []string
 
-	teamName := interaction.Options[0].Value.(string)
 	player1 := i.Member.User.ID
-
 	playerIds = append(playerIds, player1)
 
-	for i := 1; i < len(interaction.Options); i++ {
-		playerId := interaction.Options[i].Value.(string)
-		playerId = strings.ReplaceAll(playerId, "<@", "")
-		playerId = strings.ReplaceAll(playerId, ">", "")
-		playerIds = append(playerIds, playerId)
-	}
-	isValid, players, err := ValidateAllTeamMembers(playerIds, db, player1)
-	if isValid {
-		err := sendTeamRegistration(players, teamName, db)
-		if err != nil {
-			log.Print(err)
-			RegistrationErrorResponse(s, i, err)
-		}
-	} else {
-		RegistrationErrorResponse(s, i, fmt.Errorf("%v", err))
+	teamName := interaction.Options[0].Value.(string)
+
+	err := checkIfActiveTeamAlreadyExists(teamName, db)
+	if err != nil {
+		// team already exists with registered name (case-insensitive)
+		RegistrationErrorResponse(s, i, err)
 		return
 	}
-	TeamRegistrationSuccessResponse(s, i, teamName)
+
+	for j := 1; j < len(interaction.Options); j++ {
+		playerId := interaction.Options[j].Value.(string)
+		if playerId[1] == '@' {
+			playerId = strings.ReplaceAll(playerId, "<@", "")
+			playerId = strings.ReplaceAll(playerId, ">", "")
+		}
+
+		if containsOnlyNumbers(playerId) {
+			playerIds = append(playerIds, playerId)
+		} else {
+			RegistrationErrorResponse(s, i, fmt.Errorf("you can only add valid discord users to your team. Ex: @PLAYER"))
+			return
+		}
+	}
+
+	// check to see if there's duplicate strings
+	hasDuplicates, dupedUser := hasDuplicates(playerIds)
+	if hasDuplicates {
+		if dupedUser == player1 {
+			dupErr := fmt.Errorf("no need to add yourself,<@%v>", dupedUser)
+			RegistrationErrorResponse(s, i, dupErr)
+			return
+		}
+		dupErr := fmt.Errorf("<@%v> can't be on the team twice", dupedUser)
+		RegistrationErrorResponse(s, i, dupErr)
+		return
+	}
+	isAllRegistered, players, unregisteredPlayers := ValidateAllTeamMembers(playerIds, db)
+	if isAllRegistered {
+		err := sendTeamRegistration(players, teamName, db)
+		if err != nil {
+			// sendTeamRegistration error
+			log.Print(err)
+			RegistrationErrorResponse(s, i, err)
+			return
+		}
+		// all players were registered and no error from db submission
+		TeamRegistrationSuccessResponse(s, i, teamName)
+	} else {
+		unregisteredErrorMsg := whoIsNotRegistered(unregisteredPlayers)
+		RegistrationErrorResponse(s, i, fmt.Errorf("%v", unregisteredErrorMsg))
+	}
 }
 
-func ValidateAllTeamMembers(ids []string, db mariadb.DBHandler, player1 string) (bool, []mariadb.Player, error) {
+func checkIfActiveTeamAlreadyExists(teamName string, db mariadb.DBHandler) error {
+	returnedTeam, _ := db.DB.ReadTeamByTeamName(teamName) // a team can be returned here if needed. For now, err will determine if row was not found
+	if returnedTeam.TeamName != "" {
+		err := fmt.Errorf(" `%v`\n has already been chosen - try another team name", teamName)
+		return err
+	}
+	return nil
+}
+
+func whoIsNotRegistered(players []string) string {
+	msg := "Users are not registered: "
+	for _, player := range players {
+		msg += fmt.Sprintf("<@%s> ", player)
+	}
+	return strings.TrimSpace(msg)
+}
+
+func ValidateAllTeamMembers(ids []string, db mariadb.DBHandler) (bool, []mariadb.Player, []string) {
 	var players []mariadb.Player
+	var unregisteredPlayers []string
 	var wg sync.WaitGroup
 	var mu sync.Mutex // protect the concurrent write to players slice
 	var errChan = make(chan error, len(ids))
@@ -153,19 +203,14 @@ func ValidateAllTeamMembers(ids []string, db mariadb.DBHandler, player1 string) 
 		go func(id string) {
 			defer wg.Done() // Ensure that Done is called even if the condition below is true
 
-			if id == player1 {
-				err := fmt.Errorf("no need to register yourself")
-				errChan <- err
-				return
-			}
-
 			select {
 			case <-done:
 				// If done channel is closed, exit goroutine
 				return
 			default:
-				player, err := db.DB.ReadByDiscordId(id)
+				player, err := db.DB.ReadUsersByDiscordId(id)
 				if err != nil {
+					unregisteredPlayers = append(unregisteredPlayers, id)
 					// Sends error to the errChan
 					errChan <- err
 					return
@@ -185,13 +230,49 @@ func ValidateAllTeamMembers(ids []string, db mariadb.DBHandler, player1 string) 
 
 	select {
 	case err := <-errChan:
-		log.Println("Error:", err)
-		return false, players, err
+		log.Printf(err.Error())
+		return false, players, unregisteredPlayers
 	default:
-		return true, players, nil
+		return true, players, unregisteredPlayers
 	}
 }
 
-func sendTeamRegistration(players []mariadb.Player, name string, db mariadb.DBHandler) error {
+// sendTeamRegistration adds players to a temp table in the DB, along with adding pending team to team table.
+func sendTeamRegistration(players []mariadb.Player, teamName string, db mariadb.DBHandler) error {
+	for _, player := range players {
+		// avoiding concurrency here (not sure how DB will handle concurrent writes)
+		err := db.DB.CreateTempRoster(strconv.FormatInt(player.DiscordId, 10), teamName)
+		if err != nil {
+			return err
+		}
+	}
+	err := db.DB.CreateTempTeam(teamName)
+	if err != nil {
+		return err
+	}
 	return nil
+}
+
+// hasDuplicates takes in a slice of string and checks to see if there are exact string matches within any index.
+func hasDuplicates(slice []string) (bool, string) {
+	seen := make(map[string]bool)
+
+	for i, value := range slice {
+		// If the value is already in the map, it's a duplicate
+		if seen[value] {
+			return true, slice[i]
+		}
+
+		// Mark the value as seen
+		seen[value] = true
+	}
+
+	// No duplicates found
+	return false, ""
+}
+
+func containsOnlyNumbers(input string) bool {
+	// Use a regular expression to check if the string contains only numbers
+	match, _ := regexp.MatchString("^[0-9]+$", input)
+	return match
 }

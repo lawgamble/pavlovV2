@@ -79,7 +79,7 @@ func RegistrationErrorResponse(s *discordgo.Session, i *discordgo.InteractionCre
 	resErr := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Content: "Registration Failed: " + err.Error(),
+			Content: "***Registration Failed***:\n" + err.Error(),
 			Flags:   discordgo.MessageFlagsEphemeral,
 		},
 	})

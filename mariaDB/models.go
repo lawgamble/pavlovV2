@@ -27,6 +27,19 @@ type ModalSubmitData struct {
 	InGameName  string
 }
 
+type TempTeamMember struct {
+	DiscordId int64  `json:"DiscordId"`
+	Team      string `json:"Team"`
+}
+
+type TempTeam []TempTeamMember
+
+type Team struct {
+	TeamId     string `json:"TeamId"`
+	TeamName   string `json:"TeamName"`
+	TeamStatus string `json:"TeamStatus"`
+}
+
 func (m *ModalSubmitData) ValidateRegion() error {
 	switch m.Region {
 	case "1":
