@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/bwmarrin/discordgo"
 	"log"
@@ -8,6 +9,8 @@ import (
 	"pfc2/components"
 	"pfc2/interactions"
 	mariadb "pfc2/mariaDB"
+	"strconv"
+	"sync"
 )
 
 func HandleModalSubmit(s *discordgo.Session, i *discordgo.InteractionCreate, db mariadb.DBHandler) {
@@ -95,7 +98,150 @@ func HandleApplicationCommands(s *discordgo.Session, i *discordgo.InteractionCre
 		{
 			fmt.Println("You did it!")
 		}
+	case "listapprovals":
+		{
+			HandleListApprovalsCommand(s, i, db)
+		}
+	case "approveteam":
+		{
+			ApproveTeam(s, i, interaction, db)
+		}
 	}
+}
+
+func ApproveTeam(s *discordgo.Session, i *discordgo.InteractionCreate, interaction discordgo.ApplicationCommandInteractionData, db mariadb.DBHandler) {
+	teamName := interaction.Options[0].Value.(string)
+	returnedTeam, _ := db.DB.ReadTeamByTeamName(teamName)
+	if returnedTeam.TeamName == "" {
+		// send error that team does not exist
+		return
+	}
+	// if team exists: // Validate the team is not already in an active state
+	if returnedTeam.TeamStatus != "Pending" {
+		// bail here as the team is already active or denied, etc.
+		return
+	}
+	playersOnTeam, _ := db.DB.ReadAllPlayersOnTempTeam(teamName)
+	if len(playersOnTeam) != 5 {
+		// return error here - should be 5
+	}
+	// check that each player does not have a team in the USERS table (TEAM should be empty)
+	if len(playersOnOtherTeams(playersOnTeam, db)) > 0 {
+		return
+		// we have to bail here and the team can not be registered
+	}
+
+	// Create DiscordRole "Case sensitive" team name
+	mentionable := true
+	roleParameters := discordgo.RoleParams{
+		Name:        teamName,
+		Color:       nil,
+		Hoist:       nil,
+		Permissions: nil,
+		Mentionable: &mentionable,
+	}
+	newTeamRole, err := s.GuildRoleCreate(i.GuildID, &roleParameters)
+	if err != nil {
+		// need to say there was an error, but can continue
+	}
+	newTeamRoleId := newTeamRole.ID
+	leagueMemberRoleId := os.Getenv("LEAGUE_MEMBER_ROLE_ID")
+	//if none fail, we are approved
+
+	// loop through all tempPlayers
+	for _, tempPlayer := range playersOnTeam {
+		// add team name to each player on the USER table
+		err := db.DB.UpdatePlayerTeamName(teamName, tempPlayer.DiscordId)
+		if err != nil {
+			//probably just continue here and send a res to mod
+		}
+		// give all players team role
+		err = s.GuildMemberRoleAdd(i.GuildID, strconv.FormatInt(tempPlayer.DiscordId, 10), newTeamRoleId)
+		if err != nil {
+			// continue, but let mod know
+		}
+		// give all players "League Member" Role
+		err = s.GuildMemberRoleAdd(i.GuildID, strconv.FormatInt(tempPlayer.DiscordId, 10), leagueMemberRoleId)
+		if err != nil {
+			// continue, but let mod know
+		}
+		// remove all players from temp table, including duplicates - delete all from table where discordId = ?
+		deleteErr := db.DB.DeletePlayerFromTempTable(strconv.FormatInt(tempPlayer.DiscordId, 10))
+		if deleteErr != nil {
+			// let mod know they need to do it manually
+		}
+	}
+
+	// change team status on TEAM table to "Active"
+
+	// give team captain role to captain on TEAM table
+
+	// send message to a channel? In game names blah blah.
+
+}
+
+func playersOnOtherTeams(team []mariadb.TempTeamMember, db mariadb.DBHandler) []string {
+	var registeredList []string
+	var wg sync.WaitGroup
+	resultCh := make(chan sql.Row, len(team))
+
+	for _, player := range team {
+		wg.Add(1)
+		go func(player mariadb.TempTeamMember) {
+			defer wg.Done()
+
+			// Perform the database query for each player
+			onOtherTeam := db.DB.ReadPlayerOnRegisteredTeam(player.DiscordId)
+
+			// Send the result to the channel
+			resultCh <- onOtherTeam
+		}(player)
+	}
+	go func() {
+		wg.Wait()
+		close(resultCh)
+	}()
+
+	// Check results from the channel
+	for result := range resultCh {
+		var player mariadb.Player
+		var team sql.NullString // Declare a sql.NullString for the Team column
+
+		err := result.Scan(
+			&player.DiscordId,
+			&player.DiscordName,
+			&player.DOB,
+			&player.PlayStyle,
+			&player.Region,
+			&player.InGameName,
+			&team, // Scan into the sql.NullString for the Team column
+			&player.PlayerType,
+			&player.RegistrationDate,
+		)
+		if err == sql.ErrNoRows {
+			continue
+		} else {
+			registeredList = append(registeredList, player.InGameName)
+		}
+	}
+	return registeredList
+}
+
+func HandleListApprovalsCommand(s *discordgo.Session, i *discordgo.InteractionCreate, db mariadb.DBHandler) {
+	if !UserHasRole(s, i, os.Getenv("MODERATOR_ROLE_ID")) {
+		err := s.InteractionRespond(i.Interaction, interactions.NotPermittedInteractionResponse)
+		if err != nil {
+			log.Print(err)
+		}
+		return
+	}
+	pendingTeams, err := db.DB.ReadAllPendingTeamsAndPlayers()
+	if err != nil {
+		interactions.DefaultErrorResponse(s, i, err)
+	}
+	// build func to respond with a table of all teams.
+	tempTableString := generateNodeRepresentation(pendingTeams)
+	interactions.SendTempTeamsTable(s, i, tempTableString)
 }
 
 func HandleRepeatCommand(s *discordgo.Session, i *discordgo.InteractionCreate, interaction discordgo.ApplicationCommandInteractionData) {
@@ -109,6 +255,7 @@ func HandleRepeatCommand(s *discordgo.Session, i *discordgo.InteractionCreate, i
 	// If we get here, user has permission to run command
 	chanId := interaction.Options[0].Value.(string)
 	message := interaction.Options[1].Value.(string)
+
 	err := s.InteractionRespond(i.Interaction, interactions.RepeatCommandInteractionResponse)
 	if err != nil {
 		log.Print(err)

@@ -2,6 +2,7 @@ package mariadb
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -38,6 +39,25 @@ type Team struct {
 	TeamId     string `json:"TeamId"`
 	TeamName   string `json:"TeamName"`
 	TeamStatus string `json:"TeamStatus"`
+	TeamRegion string `json:"TeamRegion"`
+}
+
+type PendingTeams []PendingTeam
+
+type PendingTeam struct {
+	Team          string   `json:"Team"`
+	Region        string   `json:"Region"`
+	PlayerNames   []string `json:"PlayerNames"`
+	PlayStyles    []string `json:"PlayStyles"`
+	PlayerRegions []string `json:"PlayerRegions"`
+	InGameNames   []string `json:"InGameNames"`
+	PlayerTypes   []string `json:"PlayerTypes"`
+	PlayerDOB     []string `json:"PlayerDOB"`
+}
+
+func (p *PendingTeam) ConvertToSliceOfString(u []uint8) []string {
+	strValue := string(u)
+	return strings.Split(strValue, ",")
 }
 
 func (m *ModalSubmitData) ValidateRegion() error {

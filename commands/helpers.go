@@ -2,12 +2,14 @@ package commands
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/bwmarrin/discordgo"
 	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
 	mariadb "pfc2/mariaDB"
+	"strings"
 	"time"
 )
 
@@ -114,6 +116,7 @@ func writeToAliasFile(discordId string, inGameName string) error {
 	return nil
 }
 
+// UserHasRole takes in a roleId and return a bool to represent whether user has that roleId/role
 func UserHasRole(s *discordgo.Session, i *discordgo.InteractionCreate, targetRoleID string) bool {
 	// Fetch the member
 	member, err := s.GuildMember(os.Getenv("GUILD_ID"), i.Member.User.ID)
@@ -129,4 +132,23 @@ func UserHasRole(s *discordgo.Session, i *discordgo.InteractionCreate, targetRol
 	}
 	// Member does not have target role
 	return false
+}
+
+func generateNodeRepresentation(teams []mariadb.PendingTeam) string {
+	var result strings.Builder
+
+	// Build header
+	result.WriteString("```\n")
+
+	// Build data
+	for _, team := range teams {
+		result.WriteString(fmt.Sprintf("\n%s  --%s\n____________\n\n", team.Team, team.Region))
+		for i, playerName := range team.PlayerNames {
+			result.WriteString(fmt.Sprintf("   * %s (%s)  %s\n", playerName, team.InGameNames[i], team.PlayerDOB[i]))
+		}
+	}
+
+	result.WriteString("```\n")
+
+	return result.String()
 }

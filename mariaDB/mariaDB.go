@@ -6,17 +6,23 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 )
 
 type DBI interface {
 	CreatePlayer(m ModalSubmitData, time time.Time) error
+	ReadAllPlayersOnTempTeam(teamName string) ([]TempTeamMember, error)
+	ReadPlayerOnRegisteredTeam(playerId int64) sql.Row
 	CreateTempRoster(discordId, teamName string) error
 	ReadTeamByTeamName(teamName string) (Team, error)
-	CreateTempTeam(teamName string) error
+	ReadAllPendingTeamsAndPlayers() (PendingTeams, error)
+	CreateTempTeam(teamName, teamRegion string) error
 	ReadUsersByDiscordId(discordId string) (Player, error)
 	Update(m ModalSubmitData) error
-	Delete()
+	UpdatePlayerTeamName(teamName string, discordId int64) error
+	DeletePlayerFromTempTable(discordId string) error
 }
 
 type DBHandler struct {
@@ -60,6 +66,12 @@ func BuildConfig() DBConfig {
 		User:     os.Getenv("DBUSER"),
 		Password: os.Getenv("DBPASS"),
 	}
+}
+
+func (db MariaDB) ReadPlayerOnRegisteredTeam(playerId int64) sql.Row {
+	query := fmt.Sprintf("SELECT * FROM SND_USERS su WHERE DiscordId = %d AND TeamName IS NOT NULL AND TeamName != ''", playerId)
+	row := db.DB.QueryRow(query)
+	return *row
 }
 
 func (db MariaDB) CreatePlayer(m ModalSubmitData, time time.Time) error {
@@ -128,7 +140,28 @@ func (db MariaDB) Update(m ModalSubmitData) error {
 	return nil
 }
 
-func (db MariaDB) Delete() {}
+func (db MariaDB) UpdatePlayerTeamName(teamName string, discordId int64) error {
+	query := `
+        UPDATE SND_USERS
+        SET TeamName = ?
+        WHERE DiscordId = ?`
+
+	_, err := db.DB.Exec(query, teamName, discordId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (db MariaDB) DeletePlayerFromTempTable(discordId string) error {
+	query := fmt.Sprintf("DELETE FROM SND_TEMP_ROSTERS WHERE DiscordId = %s", discordId)
+	_, err := db.DB.Exec(query)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 func (db MariaDB) CreateTempRoster(discordId, teamName string) error {
 	query := "INSERT INTO SND_TEMP_ROSTERS (DiscordId, Team) VALUES (?, ?)"
@@ -136,9 +169,9 @@ func (db MariaDB) CreateTempRoster(discordId, teamName string) error {
 	return err
 }
 
-func (db MariaDB) CreateTempTeam(teamName string) error {
-	query := "INSERT INTO SND_TEAMS (TeamName, TeamStatus) VALUES (?, ?)"
-	_, err := db.DB.Query(query, teamName, "Pending")
+func (db MariaDB) CreateTempTeam(teamName, teamRegion string) error {
+	query := "INSERT INTO SND_TEAMS (TeamName, TeamRegion, TeamStatus) VALUES (?, ?, ?)"
+	_, err := db.DB.Query(query, teamName, teamRegion, "Pending")
 	return err
 }
 
@@ -152,7 +185,127 @@ func (db MariaDB) ReadTeamByTeamName(teamName string) (Team, error) {
 		&team.TeamId,
 		&team.TeamName,
 		&team.TeamStatus,
+		&team.TeamRegion,
 	)
 
 	return team, err
+}
+
+func (db MariaDB) ReadAllPlayersOnTempTeam(teamName string) ([]TempTeamMember, error) {
+	var tempMembers []TempTeamMember
+
+	query := "SELECT * FROM SND_TEMP_ROSTERS WHERE Team = (?)"
+	rows, err := db.DB.Query(query, teamName)
+	if err != nil {
+		return []TempTeamMember{}, err
+	}
+
+	for rows.Next() {
+		var tempPlayer TempTeamMember
+		var discordId, team string
+
+		err := rows.Scan(&discordId, &team)
+		if err != nil {
+			return []TempTeamMember{}, err
+		}
+		discordIdInt, _ := strconv.ParseInt(discordId, 10, 64)
+		tempPlayer.DiscordId = discordIdInt
+		tempPlayer.Team = team
+
+		tempMembers = append(tempMembers, tempPlayer)
+	}
+	return tempMembers, err
+}
+
+func (db MariaDB) ReadAllPendingTeamsAndPlayers() (PendingTeams, error) {
+	var allTeams PendingTeams
+	rows, err := db.DB.Query(tempTeamQuery)
+	if err != nil {
+		return allTeams, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var t PendingTeam
+		var playerNames, playStyle, regions, inGameName, playerTypes, dob []uint8
+		err := rows.Scan(
+			&t.Team,
+			&t.Region,
+			&playerNames,
+			&playStyle,
+			&regions,
+			&inGameName,
+			&playerTypes,
+			&dob,
+		)
+		if err != nil {
+			return allTeams, err
+		}
+
+		age, _ := convertDOBListToAgeList(dob)
+
+		t.PlayerNames = t.ConvertToSliceOfString(playerNames)
+		t.PlayStyles = t.ConvertToSliceOfString(playStyle)
+		t.PlayerRegions = t.ConvertToSliceOfString(regions)
+		t.InGameNames = t.ConvertToSliceOfString(inGameName)
+		t.PlayerTypes = t.ConvertToSliceOfString(playerTypes)
+		t.PlayerDOB = age
+		allTeams = append(allTeams, t)
+	}
+	return allTeams, nil
+}
+
+func convertDOBListToAgeList(dobList []uint8) ([]string, error) {
+	// Convert []uint8 to string
+	dobStr := string(dobList)
+
+	// Split the string by commas
+	dobStrings := strings.Split(dobStr, ",")
+
+	// Initialize the age list
+	var ageList []string
+
+	// Loop through each DOB string and convert to age
+	for _, dob := range dobStrings {
+		trimmedDOB := strings.TrimSpace(dob)
+		age, err := convertPlayerDOBtoAge([]uint8(trimmedDOB))
+		if err != nil {
+			return nil, err
+		}
+		ageList = append(ageList, age)
+	}
+
+	return ageList, nil
+}
+
+func convertPlayerDOBtoAge(dob []uint8) (string, error) {
+	// Convert []uint8 to string
+	dobStr := string(dob)
+
+	// Parse the date of birth
+	parsedDOB, err := time.Parse("2006-01-02", dobStr)
+	if err != nil {
+		return "", err
+	}
+
+	// Calculate age
+	age := calculateAge(parsedDOB)
+
+	// Return age as a string
+	return fmt.Sprintf("%d", age), nil
+}
+
+func calculateAge(dob time.Time) int {
+	// Get current time
+	currentTime := time.Now()
+
+	// Calculate age
+	age := currentTime.Year() - dob.Year()
+
+	// Adjust age if birthday hasn't occurred yet this year
+	if currentTime.YearDay() < dob.YearDay() {
+		age--
+	}
+
+	return age
 }

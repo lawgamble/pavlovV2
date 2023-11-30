@@ -9,6 +9,8 @@ var SlashCommands = []*discordgo.ApplicationCommand{
 	&addButtonsSlashCommand,
 	&repeatSlashCommand,
 	&teamRegistrationSlashCommand,
+	&listApprovalsSlashCommand,
+	&approveTeamSlashCommand,
 	//&recoverSlashCommand,
 }
 
@@ -91,31 +93,61 @@ var teamRegistrationSlashCommand = discordgo.ApplicationCommand{
 		},
 		{
 			Type:        discordgo.ApplicationCommandOptionString,
+			Name:        "team_region",
+			Description: "US or EU?",
+			Required:    true,
+			MaxLength:   2,
+		},
+		{
+			Type:        discordgo.ApplicationCommandOptionString,
 			Name:        "player2",
 			Description: "2nd player",
 			Required:    true,
 			MaxLength:   35,
 		},
-		//{
-		//	Type:        discordgo.ApplicationCommandOptionString,
-		//	Name:        "player3",
-		//	Description: "3rd player",
-		//	Required:    true,
-		//	MaxLength:   35,
-		//},
-		//{
-		//	Type:        discordgo.ApplicationCommandOptionString,
-		//	Name:        "player4",
-		//	Description: "4th player",
-		//	Required:    true,
-		//	MaxLength:   35,
-		//},
-		//{
-		//	Type:        discordgo.ApplicationCommandOptionString,
-		//	Name:        "player5",
-		//	Description: "5th player",
-		//	Required:    true,
-		//	MaxLength:   35,
-		//},
+		{
+			Type:        discordgo.ApplicationCommandOptionString,
+			Name:        "player3",
+			Description: "3rd player",
+			Required:    true,
+			MaxLength:   35,
+		},
+		{
+			Type:        discordgo.ApplicationCommandOptionString,
+			Name:        "player4",
+			Description: "4th player",
+			Required:    true,
+			MaxLength:   35,
+		},
+		{
+			Type:        discordgo.ApplicationCommandOptionString,
+			Name:        "player5",
+			Description: "5th player",
+			Required:    true,
+			MaxLength:   35,
+		},
+	},
+}
+
+// /listapprovals, show "pending" status teams + Players + In-Game-Name (chart)?
+
+var listApprovalsSlashCommand = discordgo.ApplicationCommand{
+	Name:        "listapprovals",
+	Type:        1,
+	Description: "show pending status teams + Players + In-Game-Name",
+}
+
+var approveTeamSlashCommand = discordgo.ApplicationCommand{
+	Name:        "approveteam",
+	Type:        1,
+	Description: "register a team and the players on it; you are player1",
+	Options: []*discordgo.ApplicationCommandOption{
+		{
+			Type:        discordgo.ApplicationCommandOptionString,
+			Name:        "team_name",
+			Description: "name of team you're approving",
+			Required:    true,
+			MaxLength:   35,
+		},
 	},
 }

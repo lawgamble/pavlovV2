@@ -131,3 +131,32 @@ func TeamRegistrationSuccessResponse(s *discordgo.Session, i *discordgo.Interact
 		return
 	}
 }
+
+func DefaultErrorResponse(s *discordgo.Session, i *discordgo.InteractionCreate, err error) {
+	resErr := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: fmt.Sprintf("%v", err),
+			Flags:   discordgo.MessageFlagsEphemeral,
+		},
+	})
+	if resErr != nil {
+		log.Print(resErr)
+		return
+	}
+}
+
+func SendTempTeamsTable(s *discordgo.Session, i *discordgo.InteractionCreate, table string) {
+	resErr := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: table,
+			Flags:   discordgo.MessageFlagsEphemeral,
+		},
+	})
+	if resErr != nil {
+		log.Print(resErr)
+		return
+	}
+	s.ChannelMessageSend(i.ChannelID, table)
+}
