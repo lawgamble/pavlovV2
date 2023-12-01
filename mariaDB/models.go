@@ -36,10 +36,11 @@ type TempTeamMember struct {
 type TempTeam []TempTeamMember
 
 type Team struct {
-	TeamId     string `json:"TeamId"`
-	TeamName   string `json:"TeamName"`
-	TeamStatus string `json:"TeamStatus"`
-	TeamRegion string `json:"TeamRegion"`
+	TeamId      string `json:"TeamId"`
+	TeamName    string `json:"TeamName"`
+	TeamStatus  string `json:"TeamStatus"`
+	TeamRegion  string `json:"TeamRegion"`
+	TeamCaptain string `json:"TeamCaptain"`
 }
 
 type PendingTeams []PendingTeam

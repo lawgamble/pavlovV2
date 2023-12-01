@@ -21,6 +21,7 @@ type DBI interface {
 	CreateTempTeam(teamName, teamRegion string) error
 	ReadUsersByDiscordId(discordId string) (Player, error)
 	Update(m ModalSubmitData) error
+	UpdateTeamStatus(teamName, status string) (Team, error)
 	UpdatePlayerTeamName(teamName string, discordId int64) error
 	DeletePlayerFromTempTable(discordId string) error
 }
@@ -140,6 +141,25 @@ func (db MariaDB) Update(m ModalSubmitData) error {
 	return nil
 }
 
+func (db MariaDB) UpdateTeamStatus(teamName, status string) (Team, error) {
+	var team Team
+	query := `
+		UPDATE SND_TEAMS
+		SET TeamStatus = ?
+		WHERE TeamName = ?`
+	row := db.DB.QueryRow(query, status, teamName)
+
+	err := row.Scan(
+		&team.TeamId,
+		&team.TeamName,
+		&team.TeamStatus,
+		&team.TeamRegion,
+		&team.TeamCaptain,
+	)
+
+	return team, err
+}
+
 func (db MariaDB) UpdatePlayerTeamName(teamName string, discordId int64) error {
 	query := `
         UPDATE SND_USERS
@@ -186,6 +206,7 @@ func (db MariaDB) ReadTeamByTeamName(teamName string) (Team, error) {
 		&team.TeamName,
 		&team.TeamStatus,
 		&team.TeamRegion,
+		&team.TeamCaptain,
 	)
 
 	return team, err

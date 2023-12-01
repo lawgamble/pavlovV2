@@ -86,3 +86,17 @@ var statusOptions = []string{
 	"You know, there are more interesting things in the world than my status. Like watching paint dry.",
 	"Status update: Irritated. Thanks for asking.",
 }
+
+const (
+	teamDoesNotExist        = "I couldn't find a team with that name. Check your spelling and try again!"
+	notPending              = "That team is not in a 'Pending' status - can not approve!"
+	not5                    = "There are not enough players on that team to approve them!"
+	listPlayersOnOtherTeams = "Can't approve team - There are players on other teams: "
+	errorTeamRole           = "Could not create Team Role: "
+	errorPlayerTeamName     = "Could not update Player's team name: "
+	errorTeamRoleId         = "Could not give user Team Role: "
+	errorGuildRole          = "Could not give user Guild Role: "
+	tempTableDeleteError    = "Could not remove player from temp table: "
+	teamStatusErr           = "Could not update team status!"
+	teamCaptainRoleError    = "Could not give the team captain role: "
+)

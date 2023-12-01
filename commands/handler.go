@@ -114,21 +114,27 @@ func ApproveTeam(s *discordgo.Session, i *discordgo.InteractionCreate, interacti
 	returnedTeam, _ := db.DB.ReadTeamByTeamName(teamName)
 	if returnedTeam.TeamName == "" {
 		// send error that team does not exist
+		ApproveTeamMessageResponse(s, i, teamDoesNotExist)
 		return
 	}
 	// if team exists: // Validate the team is not already in an active state
 	if returnedTeam.TeamStatus != "Pending" {
 		// bail here as the team is already active or denied, etc.
+		ApproveTeamMessageResponse(s, i, notPending)
 		return
 	}
 	playersOnTeam, _ := db.DB.ReadAllPlayersOnTempTeam(teamName)
 	if len(playersOnTeam) != 5 {
 		// return error here - should be 5
+		ApproveTeamMessageResponse(s, i, not5)
 	}
 	// check that each player does not have a team in the USERS table (TEAM should be empty)
-	if len(playersOnOtherTeams(playersOnTeam, db)) > 0 {
-		return
+	listOfPlayersOnAnotherTeam := playersOnOtherTeams(playersOnTeam, db)
+	if len(listOfPlayersOnAnotherTeam) > 0 {
 		// we have to bail here and the team can not be registered
+		ApproveTeamMessageResponse(s, i, listPlayersOnOtherTeams+fmt.Sprintf("%s", listOfPlayersOnAnotherTeam))
+		return
+
 	}
 
 	// Create DiscordRole "Case sensitive" team name
@@ -143,41 +149,70 @@ func ApproveTeam(s *discordgo.Session, i *discordgo.InteractionCreate, interacti
 	newTeamRole, err := s.GuildRoleCreate(i.GuildID, &roleParameters)
 	if err != nil {
 		// need to say there was an error, but can continue
+		ApproveTeamMessageResponse(s, i, errorTeamRole+teamName)
 	}
 	newTeamRoleId := newTeamRole.ID
 	leagueMemberRoleId := os.Getenv("LEAGUE_MEMBER_ROLE_ID")
-	//if none fail, we are approved
+	teamCaptainRoleId := os.Getenv("TEAM_CAPTAIN_ROLE_ID")
 
+	//if none fail, we are approved
 	// loop through all tempPlayers
 	for _, tempPlayer := range playersOnTeam {
+		discordIdString := strconv.FormatInt(tempPlayer.DiscordId, 10)
 		// add team name to each player on the USER table
 		err := db.DB.UpdatePlayerTeamName(teamName, tempPlayer.DiscordId)
 		if err != nil {
 			//probably just continue here and send a res to mod
+			ApproveTeamMessageResponse(s, i, errorPlayerTeamName+discordIdString)
 		}
-		// give all players team role
-		err = s.GuildMemberRoleAdd(i.GuildID, strconv.FormatInt(tempPlayer.DiscordId, 10), newTeamRoleId)
+		// give player team role
+		err = s.GuildMemberRoleAdd(i.GuildID, discordIdString, newTeamRoleId)
 		if err != nil {
 			// continue, but let mod know
+			ApproveTeamMessageResponse(s, i, errorTeamRoleId+discordIdString)
 		}
-		// give all players "League Member" Role
-		err = s.GuildMemberRoleAdd(i.GuildID, strconv.FormatInt(tempPlayer.DiscordId, 10), leagueMemberRoleId)
+		// give player "League Member" Role
+		err = s.GuildMemberRoleAdd(i.GuildID, discordIdString, leagueMemberRoleId)
 		if err != nil {
 			// continue, but let mod know
+			ApproveTeamMessageResponse(s, i, errorGuildRole+discordIdString)
 		}
-		// remove all players from temp table, including duplicates - delete all from table where discordId = ?
-		deleteErr := db.DB.DeletePlayerFromTempTable(strconv.FormatInt(tempPlayer.DiscordId, 10))
+		// remove all players from temp table, including duplicates
+		deleteErr := db.DB.DeletePlayerFromTempTable(discordIdString)
 		if deleteErr != nil {
 			// let mod know they need to do it manually
+			ApproveTeamMessageResponse(s, i, tempTableDeleteError+discordIdString)
 		}
 	}
 
 	// change team status on TEAM table to "Active"
-
+	team, updateErr := db.DB.UpdateTeamStatus(teamName, "Active")
+	if updateErr != nil {
+		//tell mod to do it manually
+		ApproveTeamMessageResponse(s, i, teamStatusErr)
+	}
 	// give team captain role to captain on TEAM table
-
+	err = s.GuildMemberRoleAdd(i.GuildID, team.TeamCaptain, teamCaptainRoleId)
+	if err != nil {
+		// continue, but let mod know user needs role
+		ApproveTeamMessageResponse(s, i, teamCaptainRoleError+team.TeamCaptain)
+	}
 	// send message to a channel? In game names blah blah.
 
+}
+
+func ApproveTeamMessageResponse(s *discordgo.Session, i *discordgo.InteractionCreate, message string) {
+	resErr := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: message,
+			Flags:   discordgo.MessageFlagsEphemeral,
+		},
+	})
+	if resErr != nil {
+		log.Print(resErr)
+		return
+	}
 }
 
 func playersOnOtherTeams(team []mariadb.TempTeamMember, db mariadb.DBHandler) []string {
