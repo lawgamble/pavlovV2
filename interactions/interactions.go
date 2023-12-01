@@ -19,6 +19,7 @@ func HandleMessageComponent(s *discordgo.Session, i *discordgo.InteractionCreate
 	case "register":
 		{
 			Register(s, i, db)
+			// make i nil here?
 		}
 	}
 }

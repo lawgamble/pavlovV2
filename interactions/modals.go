@@ -10,7 +10,7 @@ import (
 
 // OpenRegistrationModal sends a pop-up modal window, allowing a user to input text fields.
 func OpenRegistrationModal(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+	var blankInteractionResponse = discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseModal,
 		Data: &discordgo.InteractionResponseData{
 			CustomID: "createRegistration",
@@ -23,7 +23,8 @@ func OpenRegistrationModal(s *discordgo.Session, i *discordgo.InteractionCreate)
 				InGameNameActionRow,
 			},
 		},
-	})
+	}
+	err := s.InteractionRespond(i.Interaction, &blankInteractionResponse)
 	if err != nil {
 		log.Print(err)
 	}
@@ -31,13 +32,13 @@ func OpenRegistrationModal(s *discordgo.Session, i *discordgo.InteractionCreate)
 
 // OpenFilledRegistrationModal sends a pop-up modal window, allowing a user to update text fields. This modal is only viewable if the current user is registered.
 func OpenFilledRegistrationModal(s *discordgo.Session, i *discordgo.InteractionCreate, p mariadb.Player) {
-	region := RegionActionRow
+	region := FilledRegionActionRow
 	region.Components[0].(*discordgo.TextInput).Value = p.Region
-	playStyle := PlayStyleActionRow
+	playStyle := FilledPlayStyleActionRow
 	playStyle.Components[0].(*discordgo.TextInput).Value = p.PlayStyle
-	playerType := PlayerTypeActionRow
+	playerType := FilledPlayerTypeActionRow
 	playerType.Components[0].(*discordgo.TextInput).Value = p.PlayerType
-	inGameName := InGameNameActionRow
+	inGameName := FilledInGameNameActionRow
 	inGameName.Components[0].(*discordgo.TextInput).Value = p.InGameName
 
 	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -60,7 +61,7 @@ func OpenFilledRegistrationModal(s *discordgo.Session, i *discordgo.InteractionC
 }
 
 func formatDOBForModal(p mariadb.Player) discordgo.MessageComponent {
-	dob := DOBActionRow
+	dob := FilledDOBActionRow
 	d := p.DOB
 	stringDob := string(d)
 	dateComponents := strings.Split(stringDob, "-")
