@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/bwmarrin/discordgo"
 	"log"
+	"os"
 	mariadb "pfc2/mariaDB"
 	"strings"
 	"sync"
@@ -164,6 +165,9 @@ func RegisterTeam(s *discordgo.Session, i *discordgo.InteractionCreate, interact
 		}
 		// all players were registered and no error from db submission
 		TeamRegistrationSuccessResponse(s, i, teamName)
+		// TODO send message to a channel and tag a league manager (TeamRequests Channel)
+		msg := "<@&878021874431434803> - " + teamName + " just registered!"
+		_, _ = s.ChannelMessageSend(os.Getenv("TEAM_REQUESTS_CHAN_ID"), msg)
 	} else {
 		unregisteredErrorMsg := whoIsNotRegistered(unregisteredPlayers)
 		RegistrationErrorResponse(s, i, fmt.Errorf("%v", unregisteredErrorMsg))

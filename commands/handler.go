@@ -127,6 +127,7 @@ func ApproveTeam(s *discordgo.Session, i *discordgo.InteractionCreate, interacti
 	if len(playersOnTeam) != 5 {
 		// return error here - should be 5
 		ApproveTeamMessageResponse(s, i, not5)
+		return
 	}
 	// check that each player does not have a team in the USERS table (TEAM should be empty)
 	listOfPlayersOnAnotherTeam := playersOnOtherTeams(playersOnTeam, db)
@@ -263,7 +264,7 @@ func playersOnOtherTeams(team []mariadb.TempTeamMember, db mariadb.DBHandler) []
 }
 
 func HandleListApprovalsCommand(s *discordgo.Session, i *discordgo.InteractionCreate, db mariadb.DBHandler) {
-	if !UserHasRole(s, i, os.Getenv("MODERATOR_ROLE_ID")) {
+	if !UserHasRole(s, i, os.Getenv("LEAGUE_MANAGER_ROLE_ID")) {
 		err := s.InteractionRespond(i.Interaction, interactions.NotPermittedInteractionResponse)
 		if err != nil {
 			log.Print(err)
@@ -280,7 +281,7 @@ func HandleListApprovalsCommand(s *discordgo.Session, i *discordgo.InteractionCr
 }
 
 func HandleRepeatCommand(s *discordgo.Session, i *discordgo.InteractionCreate, interaction discordgo.ApplicationCommandInteractionData) {
-	if !UserHasRole(s, i, os.Getenv("MODERATOR_ROLE_ID")) {
+	if !UserHasRole(s, i, os.Getenv("LEAGUE_MANAGER_ROLE_ID")) {
 		err := s.InteractionRespond(i.Interaction, interactions.NotPermittedInteractionResponse)
 		if err != nil {
 			log.Print(err)
