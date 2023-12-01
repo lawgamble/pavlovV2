@@ -18,7 +18,7 @@ type DBI interface {
 	CreateTempRoster(discordId, teamName string) error
 	ReadTeamByTeamName(teamName string) (Team, error)
 	ReadAllPendingTeamsAndPlayers() (PendingTeams, error)
-	CreateTempTeam(teamName, teamRegion string) error
+	CreateTempTeam(teamName, teamRegion, teamCaptain string) error
 	ReadUsersByDiscordId(discordId string) (Player, error)
 	Update(m ModalSubmitData) error
 	UpdateTeamStatus(teamName, status string) (Team, error)
@@ -189,9 +189,9 @@ func (db MariaDB) CreateTempRoster(discordId, teamName string) error {
 	return err
 }
 
-func (db MariaDB) CreateTempTeam(teamName, teamRegion string) error {
-	query := "INSERT INTO SND_TEAMS (TeamName, TeamRegion, TeamStatus) VALUES (?, ?, ?)"
-	_, err := db.DB.Query(query, teamName, teamRegion, "Pending")
+func (db MariaDB) CreateTempTeam(teamName, teamRegion, teamCaptain string) error {
+	query := "INSERT INTO SND_TEAMS (TeamName, TeamRegion, TeamStatus, TeamCaptain) VALUES (?, ?, ?, ?)"
+	_, err := db.DB.Query(query, teamName, teamRegion, "Pending", teamCaptain)
 	return err
 }
 

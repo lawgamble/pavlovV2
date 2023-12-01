@@ -26,7 +26,7 @@ func whoIsNotRegistered(players []string) string {
 }
 
 // sendTeamRegistration adds players to a temp table in the DB, along with adding pending team to team table.
-func sendTeamRegistration(players []mariadb.Player, teamName, teamRegion string, db mariadb.DBHandler) error {
+func sendTeamRegistration(players []mariadb.Player, teamName, teamRegion string, db mariadb.DBHandler, teamCaptain string) error {
 	for _, player := range players {
 		// avoiding concurrency here (not sure how DB will handle concurrent writes)
 		err := db.DB.CreateTempRoster(strconv.FormatInt(player.DiscordId, 10), teamName)
@@ -34,7 +34,7 @@ func sendTeamRegistration(players []mariadb.Player, teamName, teamRegion string,
 			return err
 		}
 	}
-	err := db.DB.CreateTempTeam(teamName, teamRegion)
+	err := db.DB.CreateTempTeam(teamName, teamRegion, teamCaptain)
 	if err != nil {
 		return err
 	}

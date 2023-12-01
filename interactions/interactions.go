@@ -155,7 +155,7 @@ func RegisterTeam(s *discordgo.Session, i *discordgo.InteractionCreate, interact
 	}
 	isAllRegistered, players, unregisteredPlayers := ValidateAllTeamMembers(playerIds, db)
 	if isAllRegistered {
-		err := sendTeamRegistration(players, teamName, teamRegion, db)
+		err := sendTeamRegistration(players, teamName, teamRegion, db, player1)
 		if err != nil {
 			// sendTeamRegistration error
 			log.Print(err)
