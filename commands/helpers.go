@@ -52,7 +52,7 @@ func Status(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Content: statusResponse(),
+			Content: StatusResponse(),
 		},
 	},
 	)
@@ -61,8 +61,8 @@ func Status(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	}
 }
 
-//statusResponse returns a response string for the Status() func - at random.
-func statusResponse() string {
+//StatusResponse returns a response string for the Status() func - at random.
+func StatusResponse() string {
 	rand.Seed(time.Now().UnixNano())
 	randomIndex := rand.Intn(len(statusOptions))
 	return statusOptions[randomIndex]

@@ -60,7 +60,9 @@ func main() {
 }
 
 func readyHandler(s *discordgo.Session, event *discordgo.Ready) {
-	log.Println("Bot is now running. Press Ctrl+C to exit.")
+	status := commands.StatusResponse()
+	log.Println(event.User.Username + "'s status: \n" + status)
+
 }
 
 func commandHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
