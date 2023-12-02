@@ -195,10 +195,11 @@ func ApproveTeam(s *discordgo.Session, i *discordgo.InteractionCreate, interacti
 		ApproveTeamMessageResponse(s, i, teamStatusErr)
 	}
 	// give team captain role to captain on TEAM table
-	err = s.GuildMemberRoleAdd(i.GuildID, team.TeamCaptain, teamCaptainRoleId)
+	teamCaptainString := strconv.FormatInt(team.TeamCaptain, 10)
+	err = s.GuildMemberRoleAdd(i.GuildID, teamCaptainString, teamCaptainRoleId)
 	if err != nil {
 		// continue, but let mod know user needs role
-		ApproveTeamMessageResponse(s, i, teamCaptainRoleError+team.TeamCaptain)
+		ApproveTeamMessageResponse(s, i, teamCaptainRoleError+teamCaptainString)
 	}
 	// send message to a channel? In game names blah blah.
 	ApproveTeamMessageResponse(s, i, successfullyApproved+teamName)

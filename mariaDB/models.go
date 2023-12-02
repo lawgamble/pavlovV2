@@ -40,7 +40,7 @@ type Team struct {
 	TeamName    string `json:"TeamName"`
 	TeamStatus  string `json:"TeamStatus"`
 	TeamRegion  string `json:"TeamRegion"`
-	TeamCaptain string `json:"TeamCaptain"`
+	TeamCaptain int64  `json:"TeamCaptain"`
 }
 
 type PendingTeams []PendingTeam
