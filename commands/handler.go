@@ -113,33 +113,37 @@ func ApproveTeam(s *discordgo.Session, i *discordgo.InteractionCreate, interacti
 	teamName := interaction.Options[0].Value.(string)
 	returnedTeam, _ := db.DB.ReadTeamByTeamName(teamName)
 
+	startProcessMsg := fmt.Sprintf("Starting 8 step approval process for %v...", teamName)
+	log.Println(startProcessMsg)
+
+	//step 1 - Does Team Exist?
 	if returnedTeam.TeamName == "" {
-		// send error that team does not exist
 		ApproveTeamMessageResponse(s, i, teamDoesNotExist)
 		return
 	}
-	// if team exists: // Validate the team is not already in an active state
+	log.Println("Completed step 1 0f 8 - Team exists in DB")
+	//step 2 - Team Status - Must Be "Pending"
 	if returnedTeam.TeamStatus != "Pending" {
-		// bail here as the team is already active or denied, etc.
 		ApproveTeamMessageResponse(s, i, notPending)
 		return
 	}
+	log.Println("Completed step 2 0f 8 - Team is in 'Pending' state")
+	//step 3 - Team Player Count - Must Be 5
 	playersOnTeam, _ := db.DB.ReadAllPlayersOnTempTeam(teamName)
 	if len(playersOnTeam) != 5 {
-		// return error here - should be 5
 		ApproveTeamMessageResponse(s, i, not5)
 		return
 	}
-	// check that each player does not have a team in the USERS table (TEAM should be empty)
+	log.Println("Completed step 3 0f 8 - Team has 5 players")
+	//step 4 - Players on other Active Teams? - All players must not be on an existing "Active" Team
 	listOfPlayersOnAnotherTeam := playersOnOtherTeams(playersOnTeam, db)
 	if len(listOfPlayersOnAnotherTeam) > 0 {
-		// we have to bail here and the team can not be registered
 		ApproveTeamMessageResponse(s, i, listPlayersOnOtherTeams+fmt.Sprintf("%s", listOfPlayersOnAnotherTeam))
 		return
-
 	}
+	log.Println("Completed step 4 0f 8 - No players exist on another team")
 
-	// Create DiscordRole "Case sensitive" team name
+	//step 5 - Create Team Discord Role - Role name = name of Approved Team
 	mentionable := true
 	roleParameters := discordgo.RoleParams{
 		Name:        teamName,
@@ -150,22 +154,20 @@ func ApproveTeam(s *discordgo.Session, i *discordgo.InteractionCreate, interacti
 	}
 	newTeamRole, err := s.GuildRoleCreate(i.GuildID, &roleParameters)
 	if err != nil {
-		// need to say there was an error, but can continue
 		ApproveTeamMessageResponse(s, i, errorTeamRole+teamName)
 	}
+	log.Println("Completed step 5 0f 8 - Team Role created")
 
 	newTeamRoleId := newTeamRole.ID
 	leagueMemberRoleId := os.Getenv("LEAGUE_MEMBER_ROLE_ID")
 	teamCaptainRoleId := os.Getenv("TEAM_CAPTAIN_ROLE_ID")
 
-	//if none fail, we are approved
-	// loop through all tempPlayers
+	//step 6 - Update ALL DB tables and give Roles (For each player)
 	for _, tempPlayer := range playersOnTeam {
 		discordIdString := strconv.FormatInt(tempPlayer.DiscordId, 10)
 		// add team name to each player on the USER table
 		err := db.DB.UpdatePlayerTeamName(teamName, tempPlayer.DiscordId)
 		if err != nil {
-			//probably just continue here and send a res to mod
 			ApproveTeamMessageResponse(s, i, errorPlayerTeamName+discordIdString)
 		}
 		// give player team role
@@ -183,25 +185,29 @@ func ApproveTeam(s *discordgo.Session, i *discordgo.InteractionCreate, interacti
 		// remove all players from temp table, including duplicates
 		deleteErr := db.DB.DeletePlayerFromTempTable(discordIdString)
 		if deleteErr != nil {
-			// let mod know they need to do it manually
 			ApproveTeamMessageResponse(s, i, tempTableDeleteError+discordIdString)
 		}
 	}
+	log.Println("Completed step 6 0f 8 - All players assigned to new Team and assigned roles")
 
 	// change team status on TEAM table to "Active"
+	//step 7 - Activate new Team
 	team, updateErr := db.DB.UpdateTeamStatus(teamName, "Active")
 	if updateErr != nil {
 		//tell mod to do it manually
 		ApproveTeamMessageResponse(s, i, teamStatusErr)
 	}
+	log.Println("Completed step 7 0f 8 - Team is now 'Active'")
 	// give team captain role to captain on TEAM table
+	//step 8 - Give Team Captain the Team Captain Role
 	teamCaptainString := strconv.FormatInt(team.TeamCaptain, 10)
 	err = s.GuildMemberRoleAdd(i.GuildID, teamCaptainString, teamCaptainRoleId)
 	if err != nil {
 		// continue, but let mod know user needs role
 		ApproveTeamMessageResponse(s, i, teamCaptainRoleError+teamCaptainString)
 	}
-	// send message to a channel? In game names blah blah.
+	log.Println("Completed step 8 0f 8 - Team Captain role assigned")
+	// If we get here - SUCCESS!
 	ApproveTeamMessageResponse(s, i, successfullyApproved+teamName)
 }
 
