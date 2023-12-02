@@ -99,4 +99,5 @@ const (
 	tempTableDeleteError    = "Could not remove player from temp table: "
 	teamStatusErr           = "Could not update team status!"
 	teamCaptainRoleError    = "Could not give the team captain role: "
+	successfullyApproved    = "The team was successfully approved: "
 )

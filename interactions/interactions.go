@@ -166,7 +166,6 @@ func RegisterTeam(s *discordgo.Session, i *discordgo.InteractionCreate, interact
 		}
 		// all players were registered and no error from db submission
 		TeamRegistrationSuccessResponse(s, i, teamName)
-		// TODO send message to a channel and tag a league manager (TeamRequests Channel)
 		msg := fmt.Sprintf("<@&%s> - ", os.Getenv("LEAGUE_MANAGER_ROLE_ID")) + teamName + " just registered!"
 		_, _ = s.ChannelMessageSend(os.Getenv("TEAM_REQUESTS_CHAN_ID"), msg)
 	} else {

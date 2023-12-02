@@ -112,6 +112,7 @@ func HandleApplicationCommands(s *discordgo.Session, i *discordgo.InteractionCre
 func ApproveTeam(s *discordgo.Session, i *discordgo.InteractionCreate, interaction discordgo.ApplicationCommandInteractionData, db mariadb.DBHandler) {
 	teamName := interaction.Options[0].Value.(string)
 	returnedTeam, _ := db.DB.ReadTeamByTeamName(teamName)
+
 	if returnedTeam.TeamName == "" {
 		// send error that team does not exist
 		ApproveTeamMessageResponse(s, i, teamDoesNotExist)
@@ -152,6 +153,7 @@ func ApproveTeam(s *discordgo.Session, i *discordgo.InteractionCreate, interacti
 		// need to say there was an error, but can continue
 		ApproveTeamMessageResponse(s, i, errorTeamRole+teamName)
 	}
+
 	newTeamRoleId := newTeamRole.ID
 	leagueMemberRoleId := os.Getenv("LEAGUE_MEMBER_ROLE_ID")
 	teamCaptainRoleId := os.Getenv("TEAM_CAPTAIN_ROLE_ID")
@@ -199,7 +201,7 @@ func ApproveTeam(s *discordgo.Session, i *discordgo.InteractionCreate, interacti
 		ApproveTeamMessageResponse(s, i, teamCaptainRoleError+team.TeamCaptain)
 	}
 	// send message to a channel? In game names blah blah.
-
+	ApproveTeamMessageResponse(s, i, successfullyApproved+teamName)
 }
 
 func ApproveTeamMessageResponse(s *discordgo.Session, i *discordgo.InteractionCreate, message string) {

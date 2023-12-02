@@ -159,5 +159,4 @@ func SendTempTeamsTable(s *discordgo.Session, i *discordgo.InteractionCreate, ta
 		log.Print(resErr)
 		return
 	}
-	s.ChannelMessageSend(i.ChannelID, table)
 }
