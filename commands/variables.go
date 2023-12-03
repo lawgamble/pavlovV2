@@ -101,3 +101,5 @@ const (
 	teamCaptainRoleError    = "Could not give the team captain role: "
 	successfullyApproved    = "The team was successfully approved: "
 )
+
+var deniedTeamMessage = "Your team, %s, was denied. This is not a fluke and there are valid reasons for your denial. DO NOT contact League managers/Moderators about the denial."

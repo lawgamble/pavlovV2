@@ -11,6 +11,7 @@ var SlashCommands = []*discordgo.ApplicationCommand{
 	&teamRegistrationSlashCommand,
 	&listApprovalsSlashCommand,
 	&approveTeamSlashCommand,
+	&denyTeamSlashCommand,
 	//&recoverSlashCommand,
 }
 
@@ -140,12 +141,27 @@ var listApprovalsSlashCommand = discordgo.ApplicationCommand{
 var approveTeamSlashCommand = discordgo.ApplicationCommand{
 	Name:        "approveteam",
 	Type:        1,
-	Description: "register a team and the players on it; you are player1",
+	Description: "approve a registered team",
 	Options: []*discordgo.ApplicationCommandOption{
 		{
 			Type:        discordgo.ApplicationCommandOptionString,
 			Name:        "team_name",
 			Description: "name of team you're approving",
+			Required:    true,
+			MaxLength:   35,
+		},
+	},
+}
+
+var denyTeamSlashCommand = discordgo.ApplicationCommand{
+	Name:        "denyteam",
+	Type:        1,
+	Description: "deny a registered team",
+	Options: []*discordgo.ApplicationCommandOption{
+		{
+			Type:        discordgo.ApplicationCommandOptionString,
+			Name:        "team_name",
+			Description: "name of team you're denying",
 			Required:    true,
 			MaxLength:   35,
 		},

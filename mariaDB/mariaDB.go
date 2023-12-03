@@ -24,6 +24,7 @@ type DBI interface {
 	UpdateTeamStatus(teamName, status string) (Team, error)
 	UpdatePlayerTeamName(teamName string, discordId int64) error
 	DeletePlayerFromTempTable(discordId string) error
+	Delete(query string) error
 }
 
 type DBHandler struct {
@@ -176,6 +177,14 @@ func (db MariaDB) UpdatePlayerTeamName(teamName string, discordId int64) error {
 
 func (db MariaDB) DeletePlayerFromTempTable(discordId string) error {
 	query := fmt.Sprintf("DELETE FROM SND_TEMP_ROSTERS WHERE DiscordId = %s", discordId)
+	_, err := db.DB.Exec(query)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db MariaDB) Delete(query string) error {
 	_, err := db.DB.Exec(query)
 	if err != nil {
 		return err
