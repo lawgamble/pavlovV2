@@ -148,6 +148,7 @@ func (db MariaDB) UpdateTeamStatus(teamName, status string) (Team, error) {
 		UPDATE SND_TEAMS
 		SET TeamStatus = ?
 		WHERE TeamName = ?`
+
 	row := db.DB.QueryRow(query, status, teamName)
 
 	err := row.Scan(

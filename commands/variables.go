@@ -90,6 +90,7 @@ var statusOptions = []string{
 const (
 	teamDoesNotExist        = "I couldn't find a team with that name. Check your spelling and try again!"
 	notPending              = "That team is not in a 'Pending' status - can not approve!"
+	denyNotPending          = "That team is not in a 'Pending' status - can not deny!"
 	not5                    = "There are not enough players on that team to approve them!"
 	listPlayersOnOtherTeams = "Can't approve team - There are players on other teams: "
 	errorTeamRole           = "Could not create Team Role: "

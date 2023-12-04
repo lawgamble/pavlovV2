@@ -7,9 +7,11 @@ import (
 	"log"
 	"os"
 	"pfc2/components"
+	gpt "pfc2/gpt"
 	"pfc2/interactions"
 	mariadb "pfc2/mariaDB"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -123,26 +125,20 @@ func DenyTeam(s *discordgo.Session, i *discordgo.InteractionCreate, interaction 
 	}
 	//should only deny a team if they are "Pending"
 	if returnedTeam.TeamStatus != "Pending" {
-		ApproveDenyResponse(s, i, notPending)
+		ApproveDenyResponse(s, i, denyNotPending)
 		return
 	}
 	//read all players in order to remove their name off temp table associated with denied team
 	playersOnTeam, _ := db.DB.ReadAllPlayersOnTempTeam(teamName)
 
 	for _, tempPlayer := range playersOnTeam {
-		deletePlayerQuery := fmt.Sprintf("DELETE FROM SND_TEMP_ROSTERS WHERE DiscordId = %s AND Team = %s", tempPlayer.DiscordId, teamName)
-		err := db.DB.Delete(deletePlayerQuery)
-		if err != nil {
-			ApproveDenyResponse(s, i, err.Error())
-		}
+		discordIdString := strconv.FormatInt(tempPlayer.DiscordId, 10)
+		deletePlayerQuery := fmt.Sprintf("DELETE FROM SND_TEMP_ROSTERS WHERE DiscordId = %s AND Team = '%s'", discordIdString, teamName)
+		_ = db.DB.Delete(deletePlayerQuery)
 	}
-	team, updateErr := db.DB.UpdateTeamStatus(teamName, "Denied")
-	if updateErr != nil {
-		ApproveDenyResponse(s, i, updateErr.Error())
-	}
-	//send msg to team captain that their team was denied.
-	teamCaptainString := strconv.FormatInt(team.TeamCaptain, 10)
-	_, _ = s.ChannelMessageSend(teamCaptainString, fmt.Sprintf(deniedTeamMessage, teamName))
+	_, _ = db.DB.UpdateTeamStatus(teamName, "Denied")
+
+	//TODO send msg to team captain that their team was denied.
 
 	ApproveDenyResponse(s, i, teamName+" was denied. Fuck 'em")
 
@@ -151,6 +147,8 @@ func DenyTeam(s *discordgo.Session, i *discordgo.InteractionCreate, interaction 
 func ApproveTeam(s *discordgo.Session, i *discordgo.InteractionCreate, interaction discordgo.ApplicationCommandInteractionData, db mariadb.DBHandler) {
 	teamName := interaction.Options[0].Value.(string)
 	returnedTeam, _ := db.DB.ReadTeamByTeamName(teamName)
+
+	//ApproveDenyResponse(s, i, "Working on approving "+teamName)
 
 	startProcessMsg := fmt.Sprintf("Starting 8 step approval process for %v...", teamName)
 	log.Println(startProcessMsg)
@@ -231,15 +229,12 @@ func ApproveTeam(s *discordgo.Session, i *discordgo.InteractionCreate, interacti
 
 	// change team status on TEAM table to "Active"
 	//step 7 - Activate new Team
-	team, updateErr := db.DB.UpdateTeamStatus(teamName, "Active")
-	if updateErr != nil {
-		//tell mod to do it manually
-		ApproveDenyResponse(s, i, teamStatusErr)
-	}
+	_, _ = db.DB.UpdateTeamStatus(teamName, "Active")
+
 	log.Println("Completed step 7 0f 8 - Team is now 'Active'")
 	// give team captain role to captain on TEAM table
 	//step 8 - Give Team Captain the Team Captain Role
-	teamCaptainString := strconv.FormatInt(team.TeamCaptain, 10)
+	teamCaptainString := strconv.FormatInt(returnedTeam.TeamCaptain, 10)
 	err = s.GuildMemberRoleAdd(i.GuildID, teamCaptainString, teamCaptainRoleId)
 	if err != nil {
 		// continue, but let mod know user needs role
@@ -247,7 +242,23 @@ func ApproveTeam(s *discordgo.Session, i *discordgo.InteractionCreate, interacti
 	}
 	log.Println("Completed step 8 0f 8 - Team Captain role assigned")
 	// If we get here - SUCCESS!
-	ApproveDenyResponse(s, i, successfullyApproved+teamName)
+	//send message to channel tagging team role
+	gptHypeMessage := getTeamHypeMessage(teamName)
+	newString := strings.Replace(gptHypeMessage, teamName, fmt.Sprintf("<@&%s>", newTeamRoleId), -1)
+
+	//TODO - func to create an embed of this team, save the embed (msg ID) and store it in the SND_TEAMS EmbedId to recall it later.
+	s.ChannelMessageSend(os.Getenv("TEAM_NEWS_CHAN_ID"), newString)
+}
+
+func getTeamHypeMessage(name string) string {
+	prompt := fmt.Sprintf("PCL (Pavlov Champions League) is a competitive league for a military shooter. Teams of players submit a request to become a team and once approved, they are allowed to play against other teams. Make an epic, but short (one sentence) line about the league team '%s' joining the league.", name)
+	message := []gpt.Message{
+		{
+			Role:    "user",
+			Content: prompt,
+		},
+	}
+	return gpt.GetChatGPTReply(message)
 }
 
 func ApproveDenyResponse(s *discordgo.Session, i *discordgo.InteractionCreate, message string) {
