@@ -181,13 +181,11 @@ func ApproveTeam(s *discordgo.Session, i *discordgo.InteractionCreate, interacti
 	log.Println("Completed step 4 0f 8 - No players exist on another team")
 
 	//step 5 - Create Team Discord Role - Role name = name of Approved Team
-	mentionable := true
 	roleParameters := discordgo.RoleParams{
 		Name:        teamName,
 		Color:       nil,
 		Hoist:       nil,
 		Permissions: nil,
-		Mentionable: &mentionable,
 	}
 	newTeamRole, err := s.GuildRoleCreate(i.GuildID, &roleParameters)
 	if err != nil {

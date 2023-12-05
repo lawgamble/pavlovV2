@@ -134,21 +134,54 @@ func UserHasRole(s *discordgo.Session, i *discordgo.InteractionCreate, targetRol
 	return false
 }
 
+//func generateNodeRepresentation(teams []mariadb.PendingTeam) string {
+//	var result strings.Builder
+//
+//	// Build header
+//	result.WriteString("```\n")
+//
+//	// Build data
+//	for _, team := range teams {
+//		result.WriteString(fmt.Sprintf("\n%s (%s)\n____________\n\n", team.Team, team.Region))
+//		for i, playerName := range team.PlayerNames {
+//			result.WriteString(fmt.Sprintf("* %s (%s)  %s\n", playerName, team.InGameNames[i], team.PlayerDOB[i]))
+//		}
+//	}
+//
+//	result.WriteString("```\n")
+//
+//	return result.String()
+//}
+
 func generateNodeRepresentation(teams []mariadb.PendingTeam) string {
 	var result strings.Builder
 
-	// Build header
-	result.WriteString("```\n")
+	result.WriteString("```")
 
-	// Build data
+	completed := true
 	for _, team := range teams {
-		result.WriteString(fmt.Sprintf("\n%s  --%s\n____________\n\n", team.Team, team.Region))
+		if len(result.String())+len(fmt.Sprintf("\n-%s (%s)\n", team.Team, team.Region)) > 1800 {
+			completed = false
+			break
+		}
+		result.WriteString(fmt.Sprintf("\n-%s (%s)\n", team.Team, team.Region))
+
 		for i, playerName := range team.PlayerNames {
-			result.WriteString(fmt.Sprintf("   * %s (%s)  %s\n", playerName, team.InGameNames[i], team.PlayerDOB[i]))
+			result.WriteString(fmt.Sprintf("%s (%s)  %s\n", playerName, team.InGameNames[i], team.PlayerDOB[i]))
+		}
+
+		// Check the length after each team iteration
+		if len(result.String()) > 1800 {
+			completed = false
+			break
 		}
 	}
-
 	result.WriteString("```\n")
+
+	// Append a message if the loop was not fully completed
+	if !completed {
+		result.WriteString("Too many teams to list them all - start approving!")
+	}
 
 	return result.String()
 }
